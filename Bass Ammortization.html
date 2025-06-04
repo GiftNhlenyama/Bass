@@ -1,0 +1,2186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bass Amortization Scheduler</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* ==========================================================================
+            1. CSS Variables - Theme Definitions
+            ========================================================================== */
+
+        /* Default Variables (Fallback/Light Theme) - Apple-like Aesthetics */
+        :root {
+            /* Primary Brand Colors */
+            --primary-color: #007aff; /* Apple Blue */
+            --primary-dark: #005ac8;
+
+            /* Accent/Success Colors */
+            --secondary-color: #34c759; /* Apple Green (for success/savings) */
+            --export-color: #ff9500; /* Apple Orange (for export) */
+            --export-dark: #cc7000;
+
+            /* Backgrounds */
+            --bg-body: #f0f2f5; /* Very light grey, subtle neumorphic base */
+            --bg-card: #ffffff; /* Pure white for main containers */
+            --bg-section: #f0f2f5; /* Slightly darker than card, for "pressed in" effect */
+            --bg-medium: #e8e8e8; /* For table row hover */
+
+            /* Text Colors */
+            --text-dark: #1c1c1e; /* Deep charcoal for headings/main text */
+            --text-medium: #8e8e93; /* Muted grey for labels/secondary text */
+            --text-light: #c7c7cc; /* Very light grey, less prominent */
+
+            /* Borders & Shadows */
+            --border-color: rgba(0, 0, 0, 0.08); /* Subtle border for tables/lines */
+
+            /* Neumorphic Shadows (Apple-like subtle) */
+            --shadow-light-top: -3px -3px 6px rgba(255, 255, 255, 0.8);
+            --shadow-dark-bottom: 3px 3px 6px rgba(0, 0, 0, 0.1);
+            --shadow-inset-light: inset 1px 1px 3px rgba(0, 0, 0, 0.05);
+            --shadow-inset-dark: inset -1px -1px 3px rgba(255, 255, 255, 0.7);
+
+            /* Other UI elements */
+            --button-text-color: #ffffff;
+            --error-color: #dc3545;
+
+            /* Chart Colors (Light Theme) - Updated to solid, non-purple */
+            --chart-grid-color: rgba(0, 0, 0, 0.1);
+            --chart-text-color: #1c1c1e;
+            --chart-line-color-1: #007bff; /* Blue */
+            --chart-line-color-2: #28a745; /* Green */
+            --chart-line-color-3: #fd7e14; /* Orange */
+            --chart-line-color-4: #17a2b8; /* Cyan/Teal */
+            --chart-line-color-5: #6c757d; /* Gray */
+            --chart-line-color-6: #343a40; /* Dark Gray */
+            --chart-pie-color-1: #007bff; /* Blue for Principal */
+            --chart-pie-color-2: #dc3545; /* Red for Interest/Fees */
+            --chart-bar-principal-color: #007bff; /* Blue for principal */
+            --chart-bar-interest-color: #dc3545; /* Red for interest */
+            --chart-bar-total-cost-original: #007bff; /* Blue for original total cost */
+            --chart-bar-total-cost-new: #28a745; /* Green for new total cost */
+            --chart-bar-service-fee-original: #fd7e14; /* Orange for original service fee */
+            --chart-bar-service-fee-new: #17a2b8; /* Cyan/Teal for new service fee */
+        }
+
+        /* Dark Theme - Updated to solid, non-purple */
+        .theme-dark {
+            /* Primary Brand Colors */
+            --primary-color: #6a0dad; /* Darker Purple (keeping for general theme, but charts avoid it) */
+            --primary-dark: #4a00e0;
+
+            /* Accent/Success Colors */
+            --secondary-color: #00C853; /* Dark Green */
+            --export-color: #FFAB40; /* Dark Orange */
+            --export-dark: #FF9100;
+
+            /* Backgrounds */
+            --bg-body: #212121;
+            --bg-card: #2c2c2c;
+            --bg-section: #212121;
+            --bg-medium: #3a3a3a; /* For table row hover in dark theme */
+
+            /* Text Colors */
+            --text-dark: #e0e0e0;
+            --text-medium: #bdbdbd;
+            --text-light: #757575;
+
+            /* Borders & Shadows */
+            --border-color: rgba(255, 255, 255, 0.05);
+
+            /* Neumorphic Shadows (Dark Theme) */
+            --shadow-light-top: -7px -7px 15px rgba(60, 60, 60, 0.7);
+            --shadow-dark-bottom: 7px 7px 15px rgba(0, 0, 0, 0.5);
+            --shadow-inset-light: inset 2px 2px 5px rgba(0, 0, 0, 0.5);
+            --shadow-inset-dark: inset -5px -5px 10px rgba(60, 60, 60, 0.2);
+
+            /* Other UI elements */
+            --error-color: #ff6b6b; /* Redder error for dark mode */
+
+            /* Chart Colors (Dark Theme) - Updated to solid, non-purple */
+            --chart-grid-color: rgba(255, 255, 255, 0.1);
+            --chart-text-color: #e0e0e0;
+            --chart-line-color-1: #007bff; /* Blue */
+            --chart-line-color-2: #28a745; /* Green */
+            --chart-line-color-3: #fd7e14; /* Orange */
+            --chart-line-color-4: #17a2b8; /* Cyan/Teal */
+            --chart-line-color-5: #adb5bd; /* Light Gray */
+            --chart-line-color-6: #6c757d; /* Gray */
+            --chart-pie-color-1: #007bff; /* Blue for Principal */
+            --chart-pie-color-2: #dc3545; /* Red for Interest/Fees */
+            --chart-bar-principal-color: #007bff; /* Blue for principal */
+            --chart-bar-interest-color: #dc3545; /* Red for interest */
+            --chart-bar-total-cost-original: #007bff; /* Blue for original total cost */
+            --chart-bar-total-cost-new: #28a745; /* Green for new total cost */
+            --chart-bar-service-fee-original: #fd7e14; /* Orange for original service fee */
+            --chart-bar-service-fee-new: #17a2b8; /* Cyan/Teal for new service fee */
+        }
+
+
+        /* ==========================================================================
+            2. Base & Layout
+            ========================================================================== */
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-body);
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* Align to top */
+            min-height: 100vh;
+            margin: 0;
+            padding: 40px 20px;
+            box-sizing: border-box;
+            color: var(--text-dark);
+            line-height: 1.6;
+            transition: background-color 0.5s ease, color 0.5s ease;
+            overflow-x: auto; /* Allow horizontal scrolling for wide content */
+        }
+
+        .container {
+            background-color: var(--bg-card);
+            padding: 50px;
+            border-radius: 20px;
+            box-shadow: var(--shadow-dark-bottom), var(--shadow-light-top);
+            width: 100%;
+            max-width: 1400px; /* Increased max-width to accommodate wider table */
+            box-sizing: border-box;
+            transition: background-color 0.5s ease, box-shadow 0.5s ease;
+        }
+
+        /* ==========================================================================
+            3. Typography & Headings
+            ========================================================================== */
+
+        h1 {
+            font-family: 'Arial', sans-serif; /* Changed to Arial */
+            color: var(--primary-dark);
+            text-align: center;
+            margin-bottom: 0; /* Adjusted for subheading */
+            font-weight: 700;
+            font-size: 4.5em; /* Increased size for "Bass" */
+            letter-spacing: -0.04em;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.05);
+        }
+
+        h2 {
+            font-family: 'Poppins', sans-serif;
+            font-size: 2.4em;
+            color: var(--text-dark);
+            text-align: center;
+            margin-top: 5px; /* Adjusted to be closer to H1 */
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--border-color);
+            margin-bottom: 35px;
+        }
+
+        h3 {
+            font-family: 'Poppins', sans-serif;
+            font-size: 2em;
+            color: var(--text-dark);
+            margin-top: 0; /* Adjusted for input section */
+            margin-bottom: 25px; /* Adjusted for input section */
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--border-color); /* Added subtle border */
+            grid-column: 1 / -1; /* Make heading span all columns */
+            text-align: left; /* Align heading to the left */
+        }
+
+        /* ==========================================================================
+            4. Theme Switcher
+            ========================================================================== */
+
+        .theme-switcher {
+            text-align: center;
+            margin-bottom: 50px; /* Increased spacing */
+            font-size: 1.1em;
+            color: var(--text-medium);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .theme-switcher .theme-label {
+            font-weight: 500;
+            color: var(--text-dark);
+            width: 40px; /* Fixed width for alignment */
+            text-align: right;
+            transition: color 0.3s ease; /* Smooth transition for label color */
+        }
+        .theme-switcher .theme-label.left {
+            text-align: right;
+        }
+        .theme-switcher .theme-label.right {
+            text-align: left;
+        }
+
+
+        /* Custom Toggle Switch Styles */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--bg-section); /* Background of the track */
+            transition: .4s;
+            border-radius: 34px;
+            box-shadow: var(--shadow-inset-dark), var(--shadow-inset-light);
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: var(--primary-color); /* Color of the thumb */
+            transition: .4s;
+            border-radius: 50%;
+            box-shadow: var(--shadow-dark-bottom);
+        }
+
+        input:checked + .slider {
+            background-color: var(--primary-color); /* Track color when checked */
+            box-shadow: var(--shadow-dark-bottom), var(--shadow-light-top);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+            background-color: var(--button-text-color); /* Thumb color when checked */
+            box-shadow: var(--shadow-inset-dark);
+        }
+
+        /* Round sliders */
+        .slider.round {
+            border-radius: 34px;
+        }
+
+        .slider.round:before {
+            border-radius: 50%;
+        }
+
+        /* ==========================================================================
+            5. Main Content Sections
+            ========================================================================== */
+
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            gap: 60px; /* Increased spacing between sections */
+            margin-top: 40px;
+        }
+
+        .input-section, .output-section {
+            background-color: var(--bg-section);
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: var(--shadow-inset-dark), var(--shadow-inset-light);
+            transition: background-color 0.5s ease, box-shadow 0.5s ease;
+        }
+
+        /* ==========================================================================
+            6. Input Section Specifics
+            ========================================================================== */
+
+        .input-section {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr); /* Fixed 3 columns */
+            gap: 30px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .input-group label {
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: var(--text-dark);
+            font-size: 1.05em;
+        }
+
+        .input-group input[type="number"],
+        .input-group input[type="text"] { /* Added text type for scenario input */
+            padding: 16px 20px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.2em;
+            color: var(--text-dark);
+            background-color: var(--bg-card);
+            box-shadow: var(--shadow-inset-dark), var(--shadow-inset-light);
+            transition: all 0.3s ease;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .input-group input[type="number"]:focus,
+        .input-group input[type="text"]:focus {
+            outline: none;
+            box-shadow: var(--shadow-dark-bottom), var(--shadow-light-top);
+        }
+
+        .error-message {
+            color: var(--error-color);
+            font-size: 0.9em;
+            margin-top: 8px; /* Added spacing */
+            min-height: 1.4em; /* Reserve space for error messages */
+        }
+
+        .input-group input.error-border {
+            border: 2px solid var(--error-color);
+            box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.3); /* Subtle glow for error */
+        }
+
+        .button-group {
+            grid-column: 1 / -1; /* Make buttons span all columns */
+            display: flex;
+            gap: 25px;
+            justify-content: center;
+            margin-top: 40px; /* Increased spacing */
+            flex-wrap: wrap;
+        }
+
+        /* ==========================================================================
+            7. Buttons
+            ========================================================================== */
+
+        .button-group button, #exportBtn {
+            padding: 16px 35px;
+            color: var(--button-text-color);
+            border: none;
+            border-radius: 12px;
+            font-size: 1.2em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease-out; /* Reduced transition for less "exaggerated" feel */
+            box-shadow: var(--shadow-dark-bottom), var(--shadow-light-top);
+            flex-grow: 1;
+            max-width: 350px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #calculateBtn {
+            background-image: linear-gradient(145deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+        }
+
+        #exportBtn {
+            background-image: linear-gradient(145deg, var(--export-color) 0%, var(--export-dark) 100%); /* Changed to export color */
+        }
+
+
+        .button-group button:hover, #exportBtn:hover {
+            transform: translateY(-3px); /* Reduced hover lift */
+            box-shadow: var(--shadow-dark-bottom), var(--shadow-light-top), 0 8px 16px rgba(0, 0, 0, 0.15); /* Reduced hover shadow */
+        }
+
+        .button-group button:active, #exportBtn:active {
+            transform: translateY(0);
+            box-shadow: var(--shadow-inset-dark), var(--shadow-inset-light);
+            background-image: linear-gradient(145deg, var(--primary-dark) 0%, var(--primary-color) 100%);
+        }
+        /* Specific active state gradient overrides for export button based on theme */
+        .theme-apple #exportBtn:active { background-image: linear-gradient(145deg, var(--export-dark) 0%, var(--export-color) 100%); }
+        .theme-dark #exportBtn:active { background-image: linear-gradient(145deg, var(--export-dark) 0%, var(--export-color) 100%); }
+
+
+        /* ==========================================================================
+            8. Output Section & Summary
+            ========================================================================== */
+
+        .output-section {
+            padding: 40px;
+            box-shadow: var(--shadow-inset-dark), var(--shadow-inset-light);
+        }
+
+        .output-section p {
+            font-size: 1.4em;
+            font-weight: 600;
+            color: var(--text-dark);
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .output-section p span {
+            color: var(--primary-color);
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.8em;
+            font-weight: 700;
+            margin-left: 10px;
+        }
+
+        .output-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+            padding: 25px 0;
+            border-top: 2px dashed var(--border-color);
+            border-bottom: 2px dashed var(--border-color);
+        }
+
+        .summary-item {
+            text-align: center;
+            padding: 20px 25px;
+            background-color: var(--bg-card);
+            border-radius: 12px;
+            box-shadow: var(--shadow-dark-bottom), var(--shadow-light-top);
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .summary-item .label {
+            font-size: 1em;
+            color: var(--text-medium);
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+
+        .summary-item .value {
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.6em;
+            font-weight: 700;
+            color: var(--primary-dark);
+        }
+        .summary-item .value.savings {
+            color: var(--secondary-color);
+        }
+
+
+        /* ==========================================================================
+            9. Amortization Table
+            ========================================================================== */
+
+        .table-container {
+            max-height: 600px;
+            overflow-x: auto; /* Allow horizontal scrolling within the table container */
+            overflow-y: auto;
+            border-radius: 12px;
+            box-shadow: var(--shadow-inset-dark), var(--shadow-inset-light);
+            background-color: var(--bg-card);
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+            margin-bottom: 60px; /* Added spacing */
+        }
+
+        #amortizationTable {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.98em;
+            table-layout: auto; /* Allow columns to size based on content */
+            min-width: fit-content; /* Ensure table takes at least content width */
+        }
+
+        #amortizationTable th,
+        #amortizationTable td {
+            border: 1px solid var(--border-color);
+            padding: 15px 10px;
+            text-align: right;
+            white-space: nowrap; /* Prevent text wrapping */
+            color: var(--text-dark);
+        }
+        #amortizationTable th:first-child,
+        #amortizationTable td:first-child {
+            text-align: center;
+        }
+
+
+        #amortizationTable th {
+            background-color: var(--bg-section);
+            font-weight: 700;
+            color: var(--text-dark);
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            white-space: nowrap;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        #amortizationTable tbody tr:nth-child(even) {
+            background-color: var(--bg-body);
+        }
+
+        #amortizationTable tbody tr:hover {
+            background-color: var(--bg-medium);
+        }
+
+        #exportBtn {
+            margin: 40px auto 0 auto;
+        }
+
+        /* ==========================================================================
+            10. Chart Styles
+            ========================================================================== */
+        .chart-container {
+            margin-top: 50px;
+            margin-bottom: 50px;
+            padding: 30px;
+            background-color: var(--bg-card);
+            border-radius: 16px;
+            box-shadow: var(--shadow-dark-bottom), var(--shadow-light-top);
+            position: relative; /* For responsiveness */
+            height: 400px; /* Set a default height */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Adjust chart canvas for responsiveness */
+        .chart-container canvas {
+            max-width: 100%;
+            height: auto;
+        }
+
+
+        /* ==========================================================================
+            11. Responsive Adjustments
+            ========================================================================== */
+
+        @media (max-width: 1200px) {
+            .container {
+                padding: 40px;
+                max-width: 900px;
+            }
+            h1 { font-size: 3.8em; } /* Adjusted for responsiveness */
+            h2 { font-size: 2em; }
+            h3 { font-size: 1.7em; }
+        }
+
+        @media (max-width: 991px) {
+            .container {
+                max-width: 700px;
+            }
+            .input-section {
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); /* Adjust for 2 columns on tablets */
+            }
+            .input-section, .output-section {
+                padding: 30px;
+            }
+            h1 { font-size: 3em; } /* Adjusted for responsiveness */
+            h2 { font-size: 1.8em; }
+            h3 { font-size: 1.5em; }
+            .summary-item { min-width: unset; }
+            .button-group button, #exportBtn { max-width: 350px; }
+            .chart-container { height: 350px; }
+        }
+
+        @media (max-width: 768px) {
+            body { padding: 20px 10px; }
+            .container {
+                padding: 25px;
+                max-width: 100%;
+            }
+            .input-section {
+                grid-template-columns: 1fr; /* Single column on mobile */
+            }
+            h1 { font-size: 2.5em; margin-bottom: 30px; } /* Adjusted for responsiveness */
+            h2 { font-size: 1.6em; margin-top: 30px; margin-bottom: 25px; }
+            h3 { font-size: 1.3em; margin-bottom: 20px; padding-bottom: 10px; }
+            .output-section p { font-size: 1.1em; }
+            .output-section p span { font-size: 1.5em; }
+            .button-group {
+                flex-direction: column;
+                align-items: center;
+                gap: 15px; /* Smaller gap for stacked buttons */
+            }
+            .button-group button, #exportBtn {
+                font-size: 1.05em;
+                padding: 12px 25px;
+                width: 100%; /* Full width on mobile */
+                max-width: 300px; /* Limit max-width even for full width */
+            }
+            .summary-item .value { font-size: 1.3em; }
+            #amortizationTable th,
+            #amortizationTable td {
+                padding: 10px 5px;
+                font-size: 0.85em;
+            }
+            .theme-switcher select { /* This rule is now effectively unused for the select element */
+                font-size: 0.95em;
+                padding: 10px 20px;
+                padding-right: 40px;
+            }
+            .chart-container { height: 300px; }
+        }
+
+        @media (max-width: 480px) {
+            .container { padding: 15px; }
+            h1 { font-size: 2em; margin-bottom: 15px; } /* Adjusted for responsiveness */
+            h2 { font-size: 1.3em; margin-top: 20px; margin-bottom: 15px; }
+            h3 { font-size: 1.1em; margin-bottom: 15px; }
+            .input-group input[type="number"],
+            .input-group input[type="text"] {
+                font-size: 0.9em;
+                padding: 10px 15px;
+            }
+            .button-group button, #exportBtn {
+                font-size: 0.9em;
+                padding: 10px 15px;
+            }
+            .theme-switcher select { /* This rule is now effectively unused for the select element */
+                font-size: 0.8em;
+                padding: 8px 10px;
+                padding-right: 25px;
+            }
+            .output-summary { gap: 10px; padding: 10px 0; }
+            .summary-item { padding: 10px; }
+            .chart-container { height: 250px; }
+        }
+
+        /* --- Loading Overlay Styles --- */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6); /* Semi-transparent dark background */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999; /* Ensure it's on top of everything */
+            color: white;
+            font-size: 1.5em;
+            font-weight: 600;
+            transition: opacity 0.3s ease;
+            opacity: 0; /* Initially hidden */
+            visibility: hidden; /* Initially hidden */
+        }
+
+        .loading-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .loading-spinner {
+            border: 8px solid rgba(255, 255, 255, 0.3);
+            border-top: 8px solid var(--primary-color); /* Use primary color for spinner */
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="theme-apple">
+    <div class="container">
+        <h1>Bass</h1>
+        <h2>Amortization Scheduler</h2>
+
+        <div class="theme-switcher" role="radiogroup" aria-label="Choose a theme for the calculator">
+            <span class="theme-label left" id="appleThemeLabel">Light</span>
+            <label class="toggle-switch">
+                <input type="checkbox" id="themeToggle">
+                <span class="slider round"></span>
+            </label>
+            <span class="theme-label right" id="darkThemeLabel">Dark</span>
+        </div>
+
+        <div class="main-content">
+            <div class="input-section">
+                <h3>Loan Details</h3>
+                <div class="input-group">
+                    <label for="principal">Principal Loan Amount (R):</label>
+                    <input type="number" id="principal" min="1" step="0.01" value="1000000">
+                    <div class="error-message" id="principalError"></div>
+                </div>
+
+                <div class="input-group">
+                    <label for="rate">Annual Interest Rate (%):</label>
+                    <input type="number" id="rate" min="0.01" step="0.01" value="10.5">
+                    <div class="error-message" id="rateError"></div>
+                </div>
+
+                <div class="input-group">
+                    <label for="term">Loan Term (Years):</label>
+                    <input type="number" id="term" min="1" step="1" value="20">
+                    <div class="error-message" id="termError"></div>
+                </div>
+
+                <div class="input-group">
+                    <label for="initiationFee">Initiation Fee (R):</label>
+                    <input type="number" id="initiationFee" min="0" step="0.01" value="1207.50">
+                    <div class="error-message" id="initiationFeeError"></div>
+                </div>
+
+                <div class="input-group">
+                    <label for="monthlyServiceFee">Monthly Service Fee (R):</label>
+                    <input type="number" id="monthlyServiceFee" min="0" step="0.01" value="69">
+                    <div class="error-message" id="monthlyServiceFeeError"></div>
+                </div>
+
+                <div class="input-group">
+                    <label for="additionalPayment">Main Additional Monthly Payment (R):</label>
+                    <input type="number" id="additionalPayment" min="0" step="0.01" value="0">
+                    <div class="error-message" id="additionalPaymentError"></div>
+                </div>
+
+                <div class="input-group" style="grid-column: 1 / -1;">
+                    <label for="scenarioAdditionalPayments">Compare Scenarios (Additional Monthly Payments, comma-separated e.g., 500, 1000, 2333):</label>
+                    <input type="text" id="scenarioAdditionalPayments" placeholder="e.g., 500, 1000, 2333">
+                    <div class="error-message" id="scenarioAdditionalPaymentsError"></div>
+                </div>
+
+                <div class="button-group">
+                    <button id="calculateBtn">
+                        <i class="fas fa-calculator"></i> Calculate Loan
+                    </button>
+                </div>
+            </div>
+
+            <div class="output-section">
+                <h2>Loan Summary:</h2>
+                <p>Calculated Monthly Payment: <span id="monthlyPaymentDisplay">R 0.00</span></p>
+
+                <div class="output-summary">
+                    <div class="summary-item">
+                        <div class="label">Original Total Interest</div>
+                        <div class="value" id="originalTotalInterestDisplay">R 0.00</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="label">New Total Interest</div>
+                        <div class="value" id="newTotalInterestDisplay">R 0.00</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="label">Interest Saved</div>
+                        <div class="value savings" id="interestSavedDisplay">R 0.00</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="label">Total Service Fee</div>
+                        <div class="value" id="totalServiceFeeDisplay">R 0.00</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="label">Service Fee Saved</div>
+                        <div class="value savings" id="serviceFeeSavedDisplay">R 0.00</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="label">Original Term</div>
+                        <div class="value" id="originalTermDisplay">0 Years</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="label">New Term</div>
+                        <div class="value" id="newTermDisplay">0 Years</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="label">Term Reduced By</div>
+                        <div class="value savings" id="termReducedDisplay">0 Months</div>
+                    </div>
+                </div>
+
+                <!-- NEW CHARTS MOVED HERE -->
+                <h3>Breakdown of Total Payments (Main Scenario):</h3>
+                <div class="chart-container">
+                    <canvas id="paymentBreakdownChart"></canvas>
+                </div>
+
+                <h3>Principal vs. Interest Paid Per Month (Main Scenario):</h3>
+                <div class="chart-container">
+                    <canvas id="principalInterestChart"></canvas>
+                </div>
+
+                <h3>Loan Balance Over Time (All Scenarios):</h3>
+                <div class="chart-container">
+                    <canvas id="loanBalanceChart"></canvas>
+                </div>
+
+                <h3>Total Loan Cost Comparison:</h3>
+                <div class="chart-container">
+                    <canvas id="totalLoanCostChart"></canvas>
+                </div>
+
+                <!-- Removed Overall Principal vs. Interest Ratio chart to avoid duplication -->
+
+                <h3>Amortization Schedule (Main Additional Payment Scenario):</h3>
+                <div class="table-container">
+                    <table id="amortizationTable">
+                        <thead>
+                            <tr>
+                                <th>Pmt No.</th>
+                                <th>Starting Balance</th>
+                                <th>Scheduled Pmt</th>
+                                <th>Service Fee</th>
+                                <th>Additional Pmt</th>
+                                <th>Total Pmt</th>
+                                <th>Interest Paid</th>
+                                <th>Principal Paid</th>
+                                <th>Interest Paid (%)</th>
+                                <th>Principal Paid (%)</th>
+                                <th>Ending Balance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Scenario Comparison (Interest Saved & Term Reduction):</h3>
+                <div class="chart-container">
+                    <canvas id="scenarioComparisonChart"></canvas>
+                </div>
+
+                <button id="exportBtn">
+                    <i class="fas fa-file-excel"></i> Export All Scenarios to Excel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay HTML -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <p>Calculating loan details...</p>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment@1.0.0"></script>
+    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+    <script>
+        // --- DOM Elements ---
+        const principalInput = document.getElementById('principal');
+        const rateInput = document.getElementById('rate');
+        const termInput = document.getElementById('term');
+        const initiationFeeInput = document.getElementById('initiationFee');
+        const monthlyServiceFeeInput = document.getElementById('monthlyServiceFee');
+        const additionalPaymentInput = document.getElementById('additionalPayment'); // Main additional payment
+        const scenarioAdditionalPaymentsInput = document.getElementById('scenarioAdditionalPayments'); // Comma-separated scenarios
+
+        const calculateBtn = document.getElementById('calculateBtn');
+        const exportBtn = document.getElementById('exportBtn');
+        const monthlyPaymentDisplay = document.getElementById('monthlyPaymentDisplay');
+        const amortizationTableBody = document.querySelector('#amortizationTable tbody');
+
+        // Summary Displays
+        const originalTotalInterestDisplay = document.getElementById('originalTotalInterestDisplay');
+        const newTotalInterestDisplay = document.getElementById('newTotalInterestDisplay');
+        const interestSavedDisplay = document.getElementById('interestSavedDisplay');
+        const totalServiceFeeDisplay = document.getElementById('totalServiceFeeDisplay');
+        const serviceFeeSavedDisplay = document.getElementById('serviceFeeSavedDisplay'); // New element
+        const originalTermDisplay = document.getElementById('originalTermDisplay');
+        const newTermDisplay = document.getElementById('newTermDisplay');
+        const termReducedDisplay = document.getElementById('termReducedDisplay');
+
+        // Theme Switcher Elements
+        const themeToggle = document.getElementById('themeToggle');
+        const darkThemeLabel = document.getElementById('darkThemeLabel'); // New element for Dark label
+        const appleThemeLabel = document.getElementById('appleThemeLabel'); // New element for Apple label
+        const body = document.body;
+
+        // Loading Overlay Element
+        const loadingOverlay = document.getElementById('loadingOverlay');
+
+        // Chart instances
+        let loanBalanceChartInstance;
+        let scenarioComparisonChartInstance;
+        let paymentBreakdownChartInstance;
+        let principalInterestChartInstance;
+        let totalLoanCostChartInstance; // New chart instance
+        // Removed overallPrincipalInterestRatioChartInstance
+        // let overallPrincipalInterestRatioChartInstance; // Removed
+
+        // Store raw data for all scenarios for export and chart
+        let allScenarioAmortizationData = {};
+
+        // --- Currency Formatting for Display (South African Rand) ---
+        const saRandFormatter = new Intl.NumberFormat('en-ZA', {
+            style: 'currency',
+            currency: 'ZAR',
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        });
+
+        function formatCurrency(amount) {
+            return saRandFormatter.format(amount);
+        }
+
+        // --- Number Formatting for Export (Plain number for Excel compatibility) ---
+        function formatNumberForExport(amount) {
+            if (typeof amount === 'number') {
+                return parseFloat(amount.toFixed(2)); // Ensure it's a number, not string
+            }
+            return amount;
+        }
+
+        // --- Validation Functions ---
+        function validateInput(inputElement, errorElement, min, max, type = 'number') {
+            const value = parseFloat(inputElement.value);
+            let isValid = true;
+            let errorMessage = '';
+
+            if (inputElement.value.trim() === '') {
+                isValid = false;
+                errorMessage = 'This field cannot be empty.';
+            } else if (isNaN(value)) {
+                isValid = false;
+                errorMessage = 'Please enter a valid number.';
+            } else if (value < min || (max !== undefined && value > max)) {
+                isValid = false;
+                errorMessage = `Value must be between ${min} and ${max !== undefined ? max : 'infinity'}.`;
+            } else if (type === 'integer' && value !== Math.floor(value)) {
+                isValid = false;
+                errorMessage = `Please enter a whole number (e.g., ${Math.floor(min)}).`;
+            }
+
+            if (!isValid) {
+                inputElement.classList.add('error-border');
+                errorElement.textContent = errorMessage;
+            } else {
+                inputElement.classList.remove('error-border');
+                errorElement.textContent = '';
+            }
+            return isValid;
+        }
+
+        function validateAllInputs() {
+            let isValid = true;
+            isValid = validateInput(principalInput, document.getElementById('principalError'), 1, undefined) && isValid;
+            isValid = validateInput(rateInput, document.getElementById('rateError'), 0.01, 100) && isValid; // Assuming max rate 100%
+            isValid = validateInput(termInput, document.getElementById('termError'), 1, 60, 'integer') && isValid; // Max term 60 years
+            isValid = validateInput(initiationFeeInput, document.getElementById('initiationFeeError'), 0, undefined) && isValid;
+            isValid = validateInput(monthlyServiceFeeInput, document.getElementById('monthlyServiceFeeError'), 0, undefined) && isValid;
+            isValid = validateInput(additionalPaymentInput, document.getElementById('additionalPaymentError'), 0, undefined) && isValid;
+
+            // Validate scenario additional payments as comma-separated numbers
+            const scenarioPaymentsRaw = scenarioAdditionalPaymentsInput.value.trim();
+            if (scenarioPaymentsRaw) {
+                const payments = scenarioPaymentsRaw.split(',').map(p => parseFloat(p.trim()));
+                const allValidNumbers = payments.every(p => !isNaN(p) && p >= 0);
+                if (!allValidNumbers) {
+                    isValid = false;
+                    document.getElementById('scenarioAdditionalPaymentsError').textContent = 'Please enter comma-separated numbers (e.g., 500, 1000). All values must be non-negative.';
+                    scenarioAdditionalPaymentsInput.classList.add('error-border');
+                } else {
+                    document.getElementById('scenarioAdditionalPaymentsError').textContent = '';
+                    scenarioAdditionalPaymentsInput.classList.remove('error-border');
+                }
+            } else {
+                document.getElementById('scenarioAdditionalPaymentsError').textContent = '';
+                scenarioAdditionalPaymentsInput.classList.remove('error-border');
+            }
+
+            return isValid;
+        }
+
+        // --- Core Calculation Logic ---
+
+        /**
+         * Calculates the fixed monthly payment for a loan.
+         * @param {number} principal - The initial loan amount.
+         * @param {number} annualRate - The annual interest rate (e.g., 10.5 for 10.5%).
+         * @param {number} termYears - The loan term in years.
+         * @returns {number} The calculated monthly payment.
+         */
+        function calculateMonthlyPayment(principal, annualRate, termYears) {
+            console.log(`calculateMonthlyPayment called: principal=${principal}, annualRate=${annualRate}, termYears=${termYears}`);
+            const monthlyRate = (annualRate / 100) / 12;
+            const numberOfPayments = termYears * 12;
+            console.log(`monthlyRate=${monthlyRate}, numberOfPayments=${numberOfPayments}`);
+
+            if (monthlyRate === 0) {
+                // Handle 0% interest rate to avoid division by zero
+                return principal / numberOfPayments;
+            }
+            if (numberOfPayments === 0) {
+                return 0; // Or handle as an error if a term of 0 years is invalid
+            }
+            // Formula for fixed monthly payment (P = [ i * PV ] / [ 1 - ( 1 + i )^-n ])
+            const monthlyPayment = (principal * monthlyRate) / (1 - Math.pow(1 + monthlyRate, -numberOfPayments));
+            console.log(`Calculated monthlyPayment: ${monthlyPayment}`);
+            return monthlyPayment;
+        }
+
+        /**
+         * Generates the amortization schedule for a loan.
+         * @param {number} principal - The initial loan amount.
+         * @param {number} monthlyPayment - The calculated fixed monthly payment.
+         * @param {number} monthlyRate - The monthly interest rate.
+         * @param {number} additionalPayment - Any additional payment made each month.
+         * @param {number} monthlyServiceFee - The fixed monthly service fee.
+         * @param {number} originalTermMonths - The original loan term in months (for comparison).
+         * @returns {object} An object containing the schedule, total interest, total service fees, and actual term.
+         */
+        function generateAmortizationSchedule(principal, monthlyPayment, monthlyRate, additionalPayment = 0, monthlyServiceFee = 0, originalTermMonths) {
+            console.log(`generateAmortizationSchedule called: principal=${principal}, monthlyPayment=${monthlyPayment}, monthlyRate=${monthlyRate}, additionalPayment=${additionalPayment}, monthlyServiceFee=${monthlyServiceFee}, originalTermMonths=${originalTermMonths}`);
+            let balance = principal;
+            const schedule = [];
+            let totalInterestPaid = 0;
+            let totalServiceFees = 0;
+            let paymentNumber = 0;
+
+            // Cap iterations to prevent infinite loops for very small payments or edge cases
+            const maxIterations = Math.max(originalTermMonths * 3, 1200); // 3x original term or 100 years (1200 months)
+            console.log(`maxIterations: ${maxIterations}`);
+
+            if (maxIterations === 0) {
+                console.warn("Max iterations is 0, returning empty schedule.");
+                return { schedule: [], totalInterestPaid: 0, totalServiceFees: 0, actualTermMonths: 0 };
+            }
+
+            while (balance > 0.005 && paymentNumber < maxIterations) { // Check balance > 0.005 (half a cent) for better precision
+                paymentNumber++;
+                console.log(`--- Pmt No. ${paymentNumber}, Starting Balance: ${balance.toFixed(2)} ---`);
+
+                const interestForMonth = balance * monthlyRate;
+                let principalPaidThisMonth = monthlyPayment - interestForMonth;
+
+                // Ensure principal paid is not negative if monthly payment is less than interest
+                if (principalPaidThisMonth < 0) {
+                    principalPaidThisMonth = 0;
+                }
+
+                // Add additional payment to principal paid
+                if (additionalPayment > 0) {
+                    principalPaidThisMonth += additionalPayment;
+                }
+
+                // Ensure we don't overpay the remaining balance in the last payment
+                if (principalPaidThisMonth > balance) {
+                    principalPaidThisMonth = balance;
+                }
+                
+                let totalPayment = monthlyPayment + additionalPayment + monthlyServiceFee;
+                // Adjust total payment if principalPaidThisMonth was capped
+                if (balance - principalPaidThisMonth < 0.005 && balance > 0) { // If this is effectively the last payment
+                    totalPayment = interestForMonth + principalPaidThisMonth + monthlyServiceFee;
+                }
+
+
+                let endingBalance = balance - principalPaidThisMonth;
+
+                // Ensure ending balance is exactly zero if it's very small or negative due to floating point
+                if (endingBalance < 0.005 && endingBalance > -0.005) { // Close to zero
+                    endingBalance = 0;
+                }
+
+                totalInterestPaid += interestForMonth;
+                totalServiceFees += monthlyServiceFee;
+
+                // Calculate percentages, handle division by zero for currentTotalPayment
+                const currentTotalPaymentForPercentages = monthlyPayment + additionalPayment + monthlyServiceFee;
+                const interestPaidPercentage = currentTotalPaymentForPercentages > 0 ? (interestForMonth / currentTotalPaymentForPercentages) * 100 : 0;
+                const principalPaidPercentage = currentTotalPaymentForPercentages > 0 ? (principalPaidThisMonth / currentTotalPaymentForPercentages) * 100 : 0;
+
+                schedule.push({
+                    paymentNumber: paymentNumber,
+                    startingBalance: balance,
+                    scheduledPayment: monthlyPayment,
+                    serviceFee: monthlyServiceFee,
+                    additionalPayment: additionalPayment,
+                    totalPayment: totalPayment,
+                    interestPaid: interestForMonth,
+                    principalPaid: principalPaidThisMonth,
+                    interestPaidPercentage: interestPaidPercentage,
+                    principalPaidPercentage: principalPaidPercentage,
+                    endingBalance: endingBalance
+                });
+
+                balance = endingBalance;
+                console.log(`Interest: ${interestForMonth.toFixed(2)}, Principal Paid: ${principalPaidThisMonth.toFixed(2)}, Ending Balance: ${endingBalance.toFixed(2)}`);
+            }
+            console.log(`Amortization schedule generated. Total payments: ${paymentNumber}`);
+            return {
+                schedule: schedule,
+                totalInterestPaid: totalInterestPaid,
+                totalServiceFees: totalServiceFees,
+                actualTermMonths: paymentNumber
+            };
+        }
+
+        // --- Charting Logic ---
+        const chartColors = () => {
+            const style = getComputedStyle(document.body);
+            return {
+                gridColor: style.getPropertyValue('--chart-grid-color').trim(),
+                textColor: style.getPropertyValue('--chart-text-color').trim(),
+                lineColors: [
+                    style.getPropertyValue('--chart-line-color-1').trim(),
+                    style.getPropertyValue('--chart-line-color-2').trim(),
+                    style.getPropertyValue('--chart-line-color-3').trim(),
+                    style.getPropertyValue('--chart-line-color-4').trim(),
+                    style.getPropertyValue('--chart-line-color-5').trim(),
+                    style.getPropertyValue('--chart-line-color-6').trim(),
+                ],
+                pieColors: [
+                    style.getPropertyValue('--chart-pie-color-1').trim(),
+                    style.getPropertyValue('--chart-pie-color-2').trim(),
+                ],
+                barPrincipalColor: style.getPropertyValue('--chart-bar-principal-color').trim(),
+                barInterestColor: style.getPropertyValue('--chart-bar-interest-color').trim(),
+                barTotalCostOriginal: style.getPropertyValue('--chart-bar-total-cost-original').trim(),
+                barTotalCostNew: style.getPropertyValue('--chart-bar-total-cost-new').trim(),
+                barServiceFeeOriginal: style.getPropertyValue('--chart-bar-service-fee-original').trim(),
+                barServiceFeeNew: style.getPropertyValue('--chart-bar-service-fee-new').trim(),
+            };
+        };
+
+        function updateChartColors() {
+            const colors = chartColors();
+            const commonOptions = {
+                scales: {
+                    x: {
+                        grid: { color: colors.gridColor },
+                        ticks: { color: colors.textColor },
+                        title: { color: colors.textColor }
+                    },
+                    y: {
+                        grid: { color: colors.gridColor },
+                        ticks: { color: colors.textColor },
+                        title: { color: colors.textColor }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: { color: colors.textColor }
+                    }
+                }
+            };
+
+            if (loanBalanceChartInstance) {
+                // Update existing chart options
+                loanBalanceChartInstance.options.scales.x = commonOptions.scales.x;
+                loanBalanceChartInstance.options.scales.y = commonOptions.scales.y;
+                loanBalanceChartInstance.options.plugins.legend = commonOptions.plugins.legend;
+                loanBalanceChartInstance.data.datasets.forEach((dataset, index) => {
+                    dataset.borderColor = colors.lineColors[index % colors.lineColors.length];
+                    dataset.backgroundColor = colors.lineColors[index % colors.lineColors.length]; // Solid color
+                });
+                loanBalanceChartInstance.update();
+            }
+
+            if (scenarioComparisonChartInstance) {
+                // Update existing chart options for dual axis
+                scenarioComparisonChartInstance.options.scales['y-interest'] = {
+                    ...commonOptions.scales.y,
+                    position: 'left',
+                    title: { display: true, text: 'Interest Saved (R)', color: colors.textColor },
+                    ticks: {
+                        color: colors.textColor,
+                        callback: function(value) { return formatCurrency(value); }
+                    }
+                };
+                scenarioComparisonChartInstance.options.scales['y-term'] = {
+                    ...commonOptions.scales.y,
+                    position: 'right',
+                    title: { display: true, text: 'Term Reduced (Months)', color: colors.textColor },
+                    ticks: {
+                        color: colors.textColor,
+                        callback: function(value) { return value; }
+                    },
+                    grid: { drawOnChartArea: false } // Only draw grid lines for the left axis
+                };
+                scenarioComparisonChartInstance.options.plugins.legend = commonOptions.plugins.legend;
+                scenarioComparisonChartInstance.data.datasets[0].backgroundColor = colors.lineColors[0]; // Interest Saved
+                scenarioComparisonChartInstance.data.datasets[1].backgroundColor = colors.lineColors[1]; // Term Reduced
+                scenarioComparisonChartInstance.update();
+            }
+
+            if (paymentBreakdownChartInstance) {
+                paymentBreakdownChartInstance.data.datasets[0].backgroundColor = colors.pieColors;
+                paymentBreakdownChartInstance.options.plugins.legend.labels.color = colors.textColor;
+                paymentBreakdownChartInstance.options.plugins.title.color = colors.textColor;
+                paymentBreakdownChartInstance.update();
+            }
+
+            if (principalInterestChartInstance) {
+                principalInterestChartInstance.data.datasets[0].backgroundColor = colors.barPrincipalColor;
+                principalInterestChartInstance.data.datasets[1].backgroundColor = colors.barInterestColor;
+                principalInterestChartInstance.options.plugins.legend.labels.color = colors.textColor;
+                principalInterestChartInstance.options.plugins.title.color = colors.textColor;
+                principalInterestChartInstance.options.scales.x.grid.color = colors.gridColor;
+                principalInterestChartInstance.options.scales.x.ticks.color = colors.textColor;
+                principalInterestChartInstance.options.scales.x.title.color = colors.textColor;
+                principalInterestChartInstance.options.scales.y.grid.color = colors.gridColor;
+                principalInterestChartInstance.options.scales.y.ticks.color = colors.textColor;
+                principalInterestChartInstance.options.scales.y.title.color = colors.textColor;
+                principalInterestChartInstance.update();
+            }
+
+            if (totalLoanCostChartInstance) {
+                totalLoanCostChartInstance.data.datasets[0].backgroundColor = [colors.barTotalCostOriginal, colors.barTotalCostNew];
+                totalLoanCostChartInstance.options.plugins.legend.labels.color = colors.textColor;
+                totalLoanCostChartInstance.options.plugins.title.color = colors.textColor;
+                totalLoanCostChartInstance.options.scales.x.grid.color = colors.gridColor;
+                totalLoanCostChartInstance.options.scales.x.ticks.color = colors.textColor;
+                totalLoanCostChartInstance.options.scales.x.title.color = colors.textColor;
+                totalLoanCostChartInstance.options.scales.y.grid.color = colors.gridColor;
+                totalLoanCostChartInstance.options.scales.y.ticks.color = colors.textColor;
+                totalLoanCostChartInstance.options.scales.y.title.color = colors.textColor;
+                totalLoanCostChartInstance.update();
+            }
+            // Removed overallPrincipalInterestRatioChartInstance update logic
+            /*
+            if (overallPrincipalInterestRatioChartInstance) {
+                overallPrincipalInterestRatioChartInstance.data.datasets[0].backgroundColor = colors.pieColors;
+                overallPrincipalInterestRatioChartInstance.options.plugins.legend.labels.color = colors.textColor;
+                overallPrincipalInterestRatioChartInstance.options.plugins.title.color = colors.textColor;
+                overallPrincipalInterestRatioChartInstance.update();
+            }
+            */
+        }
+
+        /**
+         * Initializes or updates the Loan Balance Over Time chart.
+         * @param {object} allScenarioData - Data for all scenarios.
+         */
+        function updateLoanBalanceChart(allScenarioData) {
+            console.log("updateLoanBalanceChart called with data:", allScenarioData);
+            const colors = chartColors();
+            const datasets = [];
+
+            // Add datasets for each scenario
+            Object.keys(allScenarioData).forEach((key, index) => {
+                const scenario = allScenarioData[key];
+                const dataPoints = scenario.schedule.map(entry => entry.endingBalance);
+                
+                datasets.push({
+                    label: key,
+                    data: dataPoints,
+                    borderColor: colors.lineColors[index % colors.lineColors.length],
+                    backgroundColor: colors.lineColors[index % colors.lineColors.length], // Solid color
+                    fill: false,
+                    tension: 0.1,
+                    pointRadius: 0 // Hide points
+                });
+            });
+            console.log("Loan Balance Chart Datasets:", datasets);
+
+            const ctx = document.getElementById('loanBalanceChart').getContext('2d');
+
+            // Destroy existing chart instance before creating a new one to prevent conflicts
+            if (loanBalanceChartInstance) {
+                loanBalanceChartInstance.destroy();
+                console.log("Existing loanBalanceChartInstance destroyed.");
+            }
+
+            // Determine the maximum number of months across all scenarios for consistent x-axis labels
+            const maxMonths = datasets.length > 0 ? Math.max(...datasets.map(d => d.data.length)) : 0;
+            const labels = Array.from({length: maxMonths}, (_, i) => i + 1);
+            console.log("Loan Balance Chart Labels (months):", labels);
+
+
+            loanBalanceChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Loan Balance Over Time',
+                            color: colors.textColor,
+                            font: { size: 18, family: 'Poppins' }
+                        },
+                        legend: {
+                            labels: { color: colors.textColor }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    label += formatCurrency(context.raw);
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Months',
+                                color: colors.textColor
+                            },
+                            grid: { color: colors.gridColor },
+                            ticks: { color: colors.textColor }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Remaining Balance (R)',
+                                color: colors.textColor
+                            },
+                            beginAtZero: true,
+                            grid: { color: colors.gridColor },
+                            ticks: {
+                                color: colors.textColor,
+                                callback: function(value) {
+                                    return formatCurrency(value);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            console.log("loanBalanceChartInstance created/updated.");
+        }
+
+        /**
+         * Initializes or updates the Scenario Comparison chart (Interest Saved & Term Reduction).
+         * @param {object} allScenarioData - Data for all scenarios.
+         * @param {number} originalTotalInterest - The total interest for the original loan.
+         * @param {number} originalTermMonths - The original loan term in months.
+         */
+        function updateScenarioComparisonChart(allScenarioData, originalTotalInterest, originalTermMonths) {
+            console.log("updateScenarioComparisonChart called.");
+            const colors = chartColors();
+            const labels = [];
+            const interestSavedData = [];
+            const termReductionData = [];
+
+            // Filter out the 'Original Loan' as it's the baseline for savings/reduction
+            const scenariosToCompare = Object.keys(allScenarioAmortizationData).filter(key => key !== 'Original Loan');
+
+            scenariosToCompare.forEach(key => {
+                const scenario = allScenarioAmortizationData[key];
+                labels.push(key);
+                interestSavedData.push(originalTotalInterest - scenario.totalInterestPaid);
+                termReductionData.push(originalTermMonths - scenario.actualTermMonths);
+            });
+            console.log("Scenario Comparison Labels:", labels);
+            console.log("Interest Saved Data:", interestSavedData);
+            console.log("Term Reduction Data:", termReductionData);
+
+
+            const ctx = document.getElementById('scenarioComparisonChart').getContext('2d');
+
+            // Destroy existing chart instance before creating a new one to prevent conflicts
+            if (scenarioComparisonChartInstance) {
+                scenarioComparisonChartInstance.destroy();
+                console.log("Existing scenarioComparisonChartInstance destroyed.");
+            }
+
+            scenarioComparisonChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Interest Saved (R)',
+                            data: interestSavedData,
+                            backgroundColor: colors.lineColors[0], // Use primary color for interest saved
+                            borderColor: colors.lineColors[0],
+                            borderWidth: 1,
+                            yAxisID: 'y-interest' // Assign to left Y-axis
+                        },
+                        {
+                            label: 'Term Reduced (Months)',
+                            data: termReductionData,
+                            backgroundColor: colors.lineColors[1], // Use secondary color for term reduction
+                            borderColor: colors.lineColors[1],
+                            borderWidth: 1,
+                            yAxisID: 'y-term' // Assign to right Y-axis
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Scenario Comparison: Interest Saved & Term Reduction',
+                            color: colors.textColor,
+                            font: { size: 18, family: 'Poppins' }
+                        },
+                        legend: {
+                            labels: { color: colors.textColor }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.dataset.label.includes('Interest Saved')) {
+                                        label += formatCurrency(context.raw);
+                                    } else {
+                                        label += `${context.raw} Months`;
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Scenario',
+                                color: colors.textColor
+                            },
+                            grid: { display: false }, // Hide x-axis grid for bars
+                            ticks: { color: colors.textColor }
+                        },
+                        'y-interest': { // Left Y-axis for Interest Saved
+                            position: 'left',
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Interest Saved (R)',
+                                color: colors.textColor
+                            },
+                            grid: { color: colors.gridColor },
+                            ticks: {
+                                color: colors.textColor,
+                                callback: function(value) {
+                                    return formatCurrency(value);
+                                }
+                            }
+                        },
+                        'y-term': { // Right Y-axis for Term Reduced
+                            position: 'right',
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Term Reduced (Months)',
+                                color: colors.textColor
+                            },
+                            grid: { drawOnChartArea: false }, // Only draw grid lines for the left axis
+                            ticks: {
+                                color: colors.textColor,
+                                callback: function(value) {
+                                    return value;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            console.log("scenarioComparisonChartInstance created/updated.");
+        }
+
+        /**
+         * Initializes or updates the Payment Breakdown Chart (Pie Chart).
+         * @param {number} principal - The total principal amount.
+         * @param {number} totalInterestPaid - The total interest paid for the main scenario.
+         * @param {number} totalServiceFees - The total service fees for the main scenario.
+         * @param {number} initiationFee - The initiation fee.
+         */
+        function updatePaymentBreakdownChart(principal, totalInterestPaid, totalServiceFees, initiationFee) {
+            console.log("updatePaymentBreakdownChart called.");
+            const colors = chartColors();
+            const totalFeesAndInterest = totalInterestPaid + totalServiceFees + initiationFee;
+            // totalPaid is not strictly needed for the pie chart data itself, but for conceptual understanding
+            // const totalPaid = principal + totalFeesAndInterest;
+
+            const ctx = document.getElementById('paymentBreakdownChart').getContext('2d');
+
+            if (paymentBreakdownChartInstance) {
+                paymentBreakdownChartInstance.data.datasets[0].data = [principal, totalFeesAndInterest];
+                paymentBreakdownChartInstance.data.datasets[0].backgroundColor = colors.pieColors;
+                paymentBreakdownChartInstance.update();
+                console.log("Existing paymentBreakdownChartInstance updated.");
+            } else {
+                paymentBreakdownChartInstance = new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels: ['Principal Paid', 'Total Interest & Fees'],
+                        datasets: [{
+                            data: [principal, totalFeesAndInterest],
+                            backgroundColor: colors.pieColors,
+                            hoverOffset: 10
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Breakdown of Total Payments (Main Scenario)',
+                                color: colors.textColor,
+                                font: { size: 18, family: 'Poppins' }
+                            },
+                            legend: {
+                                position: 'top',
+                                labels: {
+                                    color: colors.textColor,
+                                    font: { size: 14 }
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const label = context.label || '';
+                                        const value = context.raw;
+                                        const percentage = context.formattedValue;
+                                        return `${label}: ${formatCurrency(value)} (${percentage})`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+                console.log("paymentBreakdownChartInstance created.");
+            }
+        }
+
+        /**
+         * Initializes or updates the Principal vs. Interest Paid Per Month chart.
+         * @param {Array<object>} schedule - The amortization schedule for the main scenario.
+         */
+        function updatePrincipalInterestChart(schedule) {
+            console.log("updatePrincipalInterestChart called.");
+            const colors = chartColors();
+            const labels = schedule.map(entry => entry.paymentNumber);
+            const principalData = schedule.map(entry => entry.principalPaid);
+            const interestData = schedule.map(entry => entry.interestPaid);
+
+            const ctx = document.getElementById('principalInterestChart').getContext('2d');
+
+            if (principalInterestChartInstance) {
+                principalInterestChartInstance.data.labels = labels;
+                principalInterestChartInstance.data.datasets[0].data = principalData;
+                principalInterestChartInstance.data.datasets[1].data = interestData;
+                principalInterestChartInstance.update();
+                console.log("Existing principalInterestChartInstance updated.");
+            } else {
+                principalInterestChartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'Principal Paid',
+                                data: principalData,
+                                backgroundColor: colors.barPrincipalColor,
+                                borderColor: colors.barPrincipalColor,
+                                borderWidth: 1
+                            },
+                            {
+                                label: 'Interest Paid',
+                                data: interestData,
+                                backgroundColor: colors.barInterestColor,
+                                borderColor: colors.barInterestColor,
+                                borderWidth: 1
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Principal vs. Interest Paid Per Month (Main Scenario)',
+                                color: colors.textColor,
+                                font: { size: 18, family: 'Poppins' }
+                            },
+                            legend: {
+                                labels: { color: colors.textColor }
+                            },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        label += formatCurrency(context.raw);
+                                        return label;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                stacked: true,
+                                title: {
+                                    display: true,
+                                    text: 'Month',
+                                    color: colors.textColor
+                                },
+                                grid: { color: colors.gridColor },
+                                ticks: { color: colors.textColor }
+                            },
+                            y: {
+                                stacked: true,
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Amount Paid (R)',
+                                    color: colors.textColor
+                                },
+                                grid: { color: colors.gridColor },
+                                ticks: {
+                                    color: colors.textColor,
+                                    callback: function(value) {
+                                        return formatCurrency(value);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+                console.log("principalInterestChartInstance created.");
+            }
+        }
+
+        /**
+         * Initializes or updates the Total Loan Cost Comparison chart.
+         * @param {number} originalTotalCost - Total cost for the original loan.
+         * @param {number} mainScenarioTotalCost - Total cost for the main scenario.
+         */
+        function updateTotalLoanCostChart(originalTotalCost, mainScenarioTotalCost) {
+            console.log("updateTotalLoanCostChart called.");
+            const colors = chartColors();
+            const ctx = document.getElementById('totalLoanCostChart').getContext('2d');
+
+            if (totalLoanCostChartInstance) {
+                totalLoanCostChartInstance.data.datasets[0].data = [originalTotalCost, mainScenarioTotalCost];
+                totalLoanCostChartInstance.data.datasets[0].backgroundColor = [colors.barTotalCostOriginal, colors.barTotalCostNew];
+                totalLoanCostChartInstance.update();
+                console.log("Existing totalLoanCostChartInstance updated.");
+            } else {
+                totalLoanCostChartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Original Total Cost', 'Main Scenario Total Cost'],
+                        datasets: [{
+                            label: 'Total Loan Cost (R)',
+                            data: [originalTotalCost, mainScenarioTotalCost],
+                            backgroundColor: [colors.barTotalCostOriginal, colors.barTotalCostNew],
+                            borderColor: [colors.barTotalCostOriginal, colors.barTotalCostNew],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Total Loan Cost Comparison',
+                                color: colors.textColor,
+                                font: { size: 18, family: 'Poppins' }
+                            },
+                            legend: {
+                                display: false // Hide legend as labels are self-explanatory
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        label += formatCurrency(context.raw);
+                                        return label;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: { display: false },
+                                ticks: { color: colors.textColor }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Amount (R)',
+                                    color: colors.textColor
+                                },
+                                grid: { color: colors.gridColor },
+                                ticks: {
+                                    color: colors.textColor,
+                                    callback: function(value) {
+                                        return formatCurrency(value);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+                console.log("totalLoanCostChartInstance created.");
+            }
+        }
+
+        // Removed updateOverallPrincipalInterestRatioChart function
+        /*
+        function updateOverallPrincipalInterestRatioChart(totalPrincipalPaid, totalInterestPaid) {
+            console.log("updateOverallPrincipalInterestRatioChart called.");
+            const colors = chartColors();
+            const ctx = document.getElementById('overallPrincipalInterestRatioChart').getContext('2d');
+
+            if (overallPrincipalInterestRatioChartInstance) {
+                overallPrincipalInterestRatioChartInstance.data.datasets[0].data = [totalPrincipalPaid, totalInterestPaid];
+                overallPrincipalInterestRatioChartInstance.data.datasets[0].backgroundColor = colors.pieColors;
+                overallPrincipalInterestRatioChartInstance.update();
+                console.log("Existing overallPrincipalInterestRatioChartInstance updated.");
+            } else {
+                overallPrincipalInterestRatioChartInstance = new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels: ['Total Principal Paid', 'Total Interest Paid'],
+                        datasets: [{
+                            data: [totalPrincipalPaid, totalInterestPaid],
+                            backgroundColor: colors.pieColors,
+                            hoverOffset: 10
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Overall Principal vs. Interest Ratio (Main Scenario)',
+                                color: colors.textColor,
+                                font: { size: 18, family: 'Poppins' }
+                            },
+                            legend: {
+                                position: 'top',
+                                labels: {
+                                    color: colors.textColor,
+                                    font: { size: 14 }
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const label = context.label || '';
+                                        const value = context.raw;
+                                        const percentage = context.formattedValue;
+                                        return `${label}: ${formatCurrency(value)} (${percentage})`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+                console.log("overallPrincipalInterestRatioChartInstance created.");
+            }
+        }
+        */
+
+
+        // Replaces alert() with a custom message box
+        function showMessageBox(message, type = 'info') {
+            console.log(`Showing message box: Type=${type}, Message=${message}`);
+            const existingMessageBox = document.getElementById('customMessageBox');
+            if (existingMessageBox) {
+                existingMessageBox.remove();
+            }
+
+            const messageBox = document.createElement('div');
+            messageBox.id = 'customMessageBox';
+            messageBox.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background-color: var(--bg-card);
+                padding: 25px 35px;
+                border-radius: 15px;
+                box-shadow: var(--shadow-dark-bottom), var(--shadow-light-top);
+                z-index: 1000;
+                font-family: 'Inter', sans-serif;
+                color: var(--text-dark);
+                font-size: 1.1em;
+                text-align: center;
+                max-width: 90%;
+                min-width: 300px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 20px;
+                border: 2px solid ${type === 'error' ? 'var(--error-color)' : 'var(--primary-color)'};
+            `;
+
+            const messageText = document.createElement('p');
+            messageText.textContent = message;
+            messageText.style.margin = '0';
+            messageText.style.fontWeight = '500';
+
+            const closeButton = document.createElement('button');
+            closeButton.textContent = 'OK';
+            closeButton.style.cssText = `
+                padding: 12px 30px;
+                background-image: linear-gradient(145deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+                color: var(--button-text-color);
+                border: none;
+                border-radius: 10px;
+                font-size: 1em;
+                font-weight: 600;
+                cursor: pointer;
+                box-shadow: var(--shadow-dark-bottom), var(--shadow-light-top);
+                transition: all 0.3s ease;
+            `;
+            closeButton.onmouseover = () => closeButton.style.transform = 'translateY(-3px)';
+            closeButton.onmouseout = () => closeButton.style.transform = 'translateY(0)';
+            closeButton.onclick = () => messageBox.remove();
+
+            messageBox.appendChild(messageText);
+            messageBox.appendChild(closeButton);
+            document.body.appendChild(messageBox);
+        }
+
+        /**
+         * Clears all output displays and charts. Input values are NOT cleared by this function.
+         */
+        function clearAllOutputsAndCharts() {
+            console.log("Clearing all outputs and charts.");
+            // Reset summary displays
+            monthlyPaymentDisplay.textContent = 'R 0.00';
+            originalTotalInterestDisplay.textContent = 'R 0.00';
+            newTotalInterestDisplay.textContent = 'R 0.00';
+            interestSavedDisplay.textContent = 'R 0.00';
+            totalServiceFeeDisplay.textContent = 'R 0.00';
+            serviceFeeSavedDisplay.textContent = 'R 0.00'; // Clear new display
+            originalTermDisplay.textContent = '0 Years';
+            newTermDisplay.textContent = '0 Years';
+            termReducedDisplay.textContent = '0 Months';
+
+            // Clear amortization table
+            amortizationTableBody.innerHTML = '';
+
+            // Destroy chart instances to clear visuals
+            if (loanBalanceChartInstance) {
+                loanBalanceChartInstance.destroy();
+                loanBalanceChartInstance = null;
+            }
+            if (scenarioComparisonChartInstance) {
+                scenarioComparisonChartInstance.destroy();
+                scenarioComparisonChartInstance = null;
+            }
+            if (paymentBreakdownChartInstance) {
+                paymentBreakdownChartInstance.destroy();
+                paymentBreakdownChartInstance = null;
+            }
+            if (principalInterestChartInstance) {
+                principalInterestChartInstance.destroy();
+                principalInterestChartInstance = null;
+            }
+            // Removed serviceFeeComparisonChartInstance
+            if (totalLoanCostChartInstance) { // New chart
+                totalLoanCostChartInstance.destroy();
+                totalLoanCostChartInstance = null;
+            }
+            // Removed overallPrincipalInterestRatioChartInstance
+            /*
+            if (overallPrincipalInterestRatioChartInstance) { // New chart
+                overallPrincipalInterestRatioChartInstance.destroy();
+                overallPrincipalInterestRatioChartInstance = null;
+            }
+            */
+
+            // Clear stored scenario data
+            allScenarioAmortizationData = {};
+            console.log("Outputs and charts cleared.");
+        }
+
+        // --- Event Listener for Calculate Button ---
+        calculateBtn.addEventListener('click', async () => {
+            console.log("Calculate button clicked."); // Trace: Button clicked
+            // Show loading overlay immediately
+            loadingOverlay.classList.add('visible');
+
+            // Clear previous outputs before new calculation
+            clearAllOutputsAndCharts();
+
+            // Use a small delay to allow the loading overlay to render before heavy computation
+            await new Promise(resolve => setTimeout(resolve, 50));
+
+            try { // Added try block
+                if (!validateAllInputs()) {
+                    console.log("Validation failed."); // Trace: Validation failed
+                    loadingOverlay.classList.remove('visible'); // Hide loading overlay on validation failure
+                    return; // Stop if validation fails
+                }
+                console.log("Validation passed. Starting calculations."); // Trace: Validation passed
+
+                const principal = parseFloat(principalInput.value);
+                const annualRate = parseFloat(rateInput.value);
+                const termYears = parseFloat(termInput.value);
+                const initiationFee = parseFloat(initiationFeeInput.value);
+                const monthlyServiceFee = parseFloat(monthlyServiceFeeInput.value);
+                const mainAdditionalPayment = parseFloat(additionalPaymentInput.value);
+                const scenarioPaymentsRaw = scenarioAdditionalPaymentsInput.value.trim();
+
+                const originalTermMonths = termYears * 12;
+
+                // 1. Calculate Original Loan (No additional payment)
+                console.log("Calculating original loan data...");
+                const originalMonthlyPayment = calculateMonthlyPayment(principal, annualRate, termYears);
+                const originalLoanData = generateAmortizationSchedule(principal, originalMonthlyPayment, (annualRate / 100) / 12, 0, monthlyServiceFee, originalTermMonths);
+
+                allScenarioAmortizationData = {}; // Clear previous data
+                allScenarioAmortizationData['Original Loan'] = {
+                    monthlyPayment: originalMonthlyPayment,
+                    ...originalLoanData,
+                    label: 'Original Loan',
+                    totalFees: originalLoanData.totalServiceFees + initiationFee // Add total fees for original
+                };
+                console.log("Original loan data calculated:", originalLoanData); // Trace: Original data
+
+                // 2. Calculate Main Additional Payment Scenario (for display in summary and table)
+                console.log("Calculating main scenario data...");
+                const mainScenarioMonthlyPayment = calculateMonthlyPayment(principal, annualRate, termYears);
+                const mainScenarioData = generateAmortizationSchedule(principal, mainScenarioMonthlyPayment, (annualRate / 100) / 12, mainAdditionalPayment, monthlyServiceFee, originalTermMonths);
+
+                allScenarioAmortizationData[`Main Scenario (R ${mainAdditionalPayment.toFixed(2)} extra)`] = {
+                    monthlyPayment: mainScenarioMonthlyPayment,
+                    ...mainScenarioData,
+                    label: `Main Scenario (R ${mainAdditionalPayment.toFixed(2)} extra)`,
+                    totalFees: mainScenarioData.totalServiceFees + initiationFee // Add total fees for main scenario
+                };
+                console.log("Main scenario data calculated:", mainScenarioData); // Trace: Main scenario data
+
+                // Update summary displays for the main scenario
+                monthlyPaymentDisplay.textContent = formatCurrency(mainScenarioMonthlyPayment);
+                originalTotalInterestDisplay.textContent = formatCurrency(originalLoanData.totalInterestPaid);
+                newTotalInterestDisplay.textContent = formatCurrency(mainScenarioData.totalInterestPaid);
+                interestSavedDisplay.textContent = formatCurrency(originalLoanData.totalInterestPaid - mainScenarioData.totalInterestPaid);
+                totalServiceFeeDisplay.textContent = formatCurrency(mainScenarioData.totalServiceFees + initiationFee); // Add initiation fee here
+                
+                // Calculate and display Service Fee Saved
+                const originalTotalFees = originalLoanData.totalServiceFees + initiationFee;
+                const mainScenarioTotalFees = mainScenarioData.totalServiceFees + initiationFee;
+                const serviceFeeSaved = originalTotalFees - mainScenarioTotalFees;
+                serviceFeeSavedDisplay.textContent = formatCurrency(serviceFeeSaved);
+
+                originalTermDisplay.textContent = `${originalTermMonths / 12} Years (${originalTermMonths} Months)`;
+                newTermDisplay.textContent = `${(mainScenarioData.actualTermMonths / 12).toFixed(1)} Years (${mainScenarioData.actualTermMonths} Months)`;
+                termReducedDisplay.textContent = `${originalTermMonths - mainScenarioData.actualTermMonths} Months`;
+                console.log("Summary displays updated."); // Trace: Summary updated
+
+
+                // Populate Amortization Table for the Main Scenario
+                // Optimized DOM manipulation: build string first, then set innerHTML once
+                let tableRowsHtml = '';
+                mainScenarioData.schedule.forEach(row => {
+                    tableRowsHtml += `
+                        <tr>
+                            <td>${row.paymentNumber}</td>
+                            <td>${formatCurrency(row.startingBalance)}</td>
+                            <td>${formatCurrency(row.scheduledPayment)}</td>
+                            <td>${formatCurrency(row.serviceFee)}</td>
+                            <td>${formatCurrency(row.additionalPayment)}</td>
+                            <td>${formatCurrency(row.totalPayment)}</td>
+                            <td>${formatCurrency(row.interestPaid)}</td>
+                            <td>${formatCurrency(row.principalPaid)}</td>
+                            <td>${row.interestPaidPercentage.toFixed(2)}%</td>
+                            <td>${row.principalPaidPercentage.toFixed(2)}%</td>
+                            <td>${formatCurrency(row.endingBalance)}</td>
+                        </tr>
+                    `;
+                });
+                amortizationTableBody.innerHTML = tableRowsHtml;
+                console.log("Amortization table populated."); // Trace: Table populated
+
+                // 3. Calculate Additional Scenarios
+                if (scenarioPaymentsRaw) {
+                    console.log("Calculating additional scenarios...");
+                    const scenarioPayments = scenarioPaymentsRaw.split(',').map(p => parseFloat(p.trim())).filter(p => !isNaN(p) && p >= 0);
+                    scenarioPayments.forEach((extraPayment, index) => {
+                        // Skip if this scenario is the same as the main additional payment
+                        if (extraPayment === mainAdditionalPayment) return;
+
+                        const scenarioMonthlyPayment = calculateMonthlyPayment(principal, annualRate, termYears);
+                        const scenarioData = generateAmortizationSchedule(principal, scenarioMonthlyPayment, (annualRate / 100) / 12, extraPayment, monthlyServiceFee, originalTermMonths);
+                        allScenarioAmortizationData[`Scenario ${index + 1} (R ${extraPayment.toFixed(2)} extra)`] = {
+                            monthlyPayment: scenarioMonthlyPayment,
+                            ...scenarioData,
+                            label: `Scenario ${index + 1} (R ${extraPayment.toFixed(2)} extra)`,
+                            totalFees: scenarioData.totalServiceFees + initiationFee // Add total fees for this scenario
+                        };
+                    });
+                    console.log("Additional scenarios calculated."); // Trace: Additional scenarios
+                }
+
+                // Calculate total costs for new charts
+                const originalTotalCost = principal + originalLoanData.totalInterestPaid + originalTotalFees;
+                const mainScenarioTotalCost = principal + mainScenarioData.totalInterestPaid + mainScenarioTotalFees;
+
+
+                // Update Charts with all scenario data
+                console.log("Updating charts..."); // Trace: Chart update start
+                updatePaymentBreakdownChart(principal, mainScenarioData.totalInterestPaid, mainScenarioData.totalServiceFees, initiationFee);
+                updatePrincipalInterestChart(mainScenarioData.schedule); // Update the new chart
+                updateLoanBalanceChart(allScenarioAmortizationData);
+                updateTotalLoanCostChart(originalTotalCost, mainScenarioTotalCost); // New chart
+                // Removed updateOverallPrincipalInterestRatioChart call
+                // updateOverallPrincipalInterestRatioChart(principal, mainScenarioData.totalInterestPaid); // New chart
+                updateScenarioComparisonChart(allScenarioAmortizationData, originalLoanData.totalInterestPaid, originalTermMonths);
+                console.log("Charts updated."); // Trace: Chart update end
+                
+                console.log("Loan calculation and chart updates complete."); // Log completion
+            } catch (error) {
+                console.error("Error during loan calculation:", error);
+                showMessageBox("An error occurred during calculation. Please check your inputs and try again.", "error");
+            } finally {
+                // Ensure loading overlay is hidden regardless of success or failure
+                console.log("Hiding loading overlay."); // Trace: Hiding overlay
+                loadingOverlay.classList.remove('visible');
+            }
+        });
+
+        // --- Export to Excel Logic ---
+        exportBtn.addEventListener('click', () => {
+            console.log("Export button clicked.");
+            if (Object.keys(allScenarioAmortizationData).length === 0) {
+                showMessageBox('Please calculate the loan first to generate data for export.', 'info');
+                console.log("Export aborted: No scenario data available.");
+                return;
+            }
+
+            try {
+                const wb = XLSX.utils.book_new();
+                console.log("New workbook created.");
+
+                // Iterate through each scenario and create a sheet
+                for (const scenarioLabel in allScenarioAmortizationData) {
+                    console.log(`Processing scenario for export: ${scenarioLabel}`);
+                    const scenario = allScenarioAmortizationData[scenarioLabel];
+                    const schedule = scenario.schedule;
+
+                    // Get original loan data for comparison in summary
+                    const originalLoanData = allScenarioAmortizationData['Original Loan'];
+                    const originalTotalInterest = originalLoanData.totalInterestPaid;
+                    const originalTermMonths = originalLoanData.actualTermMonths;
+                    const originalTotalFees = originalLoanData.totalServiceFees + initiationFee.value; // Use .value for input element
+
+
+                    const monthsPaid = scenario.actualTermMonths;
+                    const monthsSaved = originalTermMonths - monthsPaid;
+                    const interestSavings = originalTotalInterest - scenario.totalInterestPaid;
+                    const serviceFeeSavings = originalTotalFees - scenario.totalFees;
+
+
+                    const ws_data = [];
+
+                    // Add summary rows
+                    ws_data.push(["Loan Calculation Summary for:", scenarioLabel]);
+                    ws_data.push([""]); // Empty row for spacing
+                    ws_data.push(["Original Loan Term (Months):", originalTermMonths]);
+                    ws_data.push(["Original Total Interest (R):", formatNumberForExport(originalTotalInterest)]);
+                    ws_data.push(["Scenario Loan Term (Months):", monthsPaid]);
+                    ws_data.push(["Scenario Total Interest (R):", formatNumberForExport(scenario.totalInterestPaid)]);
+                    ws_data.push(["Months Paid (Actual Term):", monthsPaid]);
+                    ws_data.push(["Months Saved (vs. Original):", monthsSaved]);
+                    ws_data.push(["Interest Savings:", formatNumberForExport(interestSavings)]);
+                    ws_data.push(["Service Fee Savings:", formatNumberForExport(serviceFeeSavings)]); // Added service fee savings
+                    ws_data.push(["Total Fees (Initiation + Service):", formatNumberForExport(scenario.totalFees)]);
+                    ws_data.push([""]); // Empty row for spacing
+                    ws_data.push(["Amortization Schedule:"]);
+                    ws_data.push(["Pmt No.", "Starting Balance", "Scheduled Pmt", "Service Fee", "Additional Pmt", "Total Pmt", "Interest Paid", "Principal Paid", "Interest Paid (%)", "Principal Paid (%)", "Ending Balance"]);
+
+
+                    schedule.forEach(row => {
+                        ws_data.push([
+                            row.paymentNumber,
+                            formatNumberForExport(row.startingBalance),
+                            formatNumberForExport(row.scheduledPayment),
+                            formatNumberForExport(row.serviceFee),
+                            formatNumberForExport(row.additionalPayment),
+                            formatNumberForExport(row.totalPayment),
+                            formatNumberForExport(row.interestPaid),
+                            formatNumberForExport(row.principalPaid),
+                            row.interestPaidPercentage.toFixed(2) + '%',
+                            row.principalPaidPercentage.toFixed(2) + '%',
+                            formatNumberForExport(row.endingBalance)
+                        ]);
+                    });
+
+                    const ws = XLSX.utils.aoa_to_sheet(ws_data);
+                    XLSX.utils.book_append_sheet(wb, ws, scenarioLabel.substring(0, 31)); // Sheet name max 31 chars
+                    console.log(`Sheet "${scenarioLabel.substring(0, 31)}" appended.`);
+                }
+
+                XLSX.writeFile(wb, 'Loan_Amortization_Scenarios.xlsx');
+                console.log("Excel file 'Loan_Amortization_Scenarios.xlsx' written successfully.");
+            } catch (error) {
+                console.error("Error during Excel export:", error);
+                showMessageBox(`An error occurred during Excel export: ${error.message}. Please try again.`, 'error');
+            }
+        });
+
+        // --- Theme Toggle Logic ---
+        themeToggle.addEventListener('change', () => {
+            if (themeToggle.checked) {
+                body.classList.remove('theme-apple');
+                body.classList.add('theme-dark');
+                darkThemeLabel.style.color = 'var(--text-dark)'; // Highlight "Dark" label
+                appleThemeLabel.style.color = 'var(--text-medium)'; // Dim "Apple" label
+            } else {
+                body.classList.remove('theme-dark');
+                body.classList.add('theme-apple');
+                darkThemeLabel.style.color = 'var(--text-medium)'; // Dim "Dark" label
+                appleThemeLabel.style.color = 'var(--text-dark)'; // Highlight "Apple" label
+            }
+            // Update chart colors immediately after theme change
+            updateChartColors();
+        });
+
+
+        // Initial setup on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            clearAllOutputsAndCharts(); // Clear outputs and charts initially
+            // Set default values after clearing
+            principalInput.value = '1000000';
+            rateInput.value = '10.5';
+            termInput.value = '20';
+            initiationFeeInput.value = '1207.50';
+            monthlyServiceFeeInput.value = '69';
+            additionalPaymentInput.value = '0';
+            scenarioAdditionalPaymentsInput.value = '';
+
+            // Set initial theme state for the toggle and name
+            // Default to Apple theme, so "Dark" label is dimmed and "Apple" is highlighted
+            if (body.classList.contains('theme-dark')) {
+                themeToggle.checked = true;
+                darkThemeLabel.style.color = 'var(--text-dark)';
+                appleThemeLabel.style.color = 'var(--text-medium)';
+            } else {
+                themeToggle.checked = false;
+                darkThemeLabel.style.color = 'var(--text-medium)';
+                appleThemeLabel.style.color = 'var(--text-dark)';
+            }
+
+            // Then perform the initial calculation with default values
+            calculateBtn.click();
+        });
+    </script>
+</body>
+</html>
