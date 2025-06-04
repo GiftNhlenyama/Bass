@@ -2079,7 +2079,8 @@
                     const originalLoanData = allScenarioAmortizationData['Original Loan'];
                     const originalTotalInterest = originalLoanData.totalInterestPaid;
                     const originalTermMonths = originalLoanData.actualTermMonths;
-                    const originalTotalFees = originalLoanData.totalServiceFees + initiationFee.value; // Use .value for input element
+                    // Corrected: Use the initiationFee from the input element's value, not a property of originalLoanData
+                    const originalTotalFees = originalLoanData.totalServiceFees + parseFloat(initiationFeeInput.value);
 
 
                     const monthsPaid = scenario.actualTermMonths;
@@ -2117,8 +2118,8 @@
                             formatNumberForExport(row.totalPayment),
                             formatNumberForExport(row.interestPaid),
                             formatNumberForExport(row.principalPaid),
-                            row.interestPaidPercentage.toFixed(2) + '%',
-                            row.principalPaidPercentage.toFixed(2) + '%',
+                            formatNumberForExport(row.interestPaidPercentage / 100), // Export as decimal (e.g., 0.15)
+                            formatNumberForExport(row.principalPaidPercentage / 100), // Export as decimal (e.g., 0.85)
                             formatNumberForExport(row.endingBalance)
                         ]);
                     });
